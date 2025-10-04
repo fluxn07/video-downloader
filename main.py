@@ -1,49 +1,37 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, jsonify, send_file
 import yt_dlp
 import os
-import uuid
 
 app = Flask(__name__)
 
-DOWNLOADS_DIR = "downloads"
-os.makedirs(DOWNLOADS_DIR, exist_ok=True)
-
-
-@app.route("/")
+@app.route('/')
 def home():
-    return "<h2>✅ Video Downloader Backend is Running!</h2>"
+    return "✅ Video Downloader Backend is Running!"
 
-
-@app.route("/download", methods=["POST"])
+@app.route('/download', methods=['POST'])
 def download_video():
+    data = request.json
+    url = data.get("url")
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+
     try:
-        data = request.get_json()
-        url = data.get("url")
-        if not url:
-            return jsonify({"error": "Missing URL"}), 400
-
-        filename = f"{uuid.uuid4()}.mp4"
-        output_path = os.path.join(DOWNLOADS_DIR, filename)
-
-        # yt-dlp options
+        # Output file path
         ydl_opts = {
-            "outtmpl": output_path,
+            "outtmpl": "downloads/%(title)s.%(ext)s",
             "format": "best",
-            "quiet": True,
-            "noplaylist": True,
-            "extractor_args": {"generic": ["impersonate=chrome"]},  # Cloudflare bypass
+            "extractor_args": {"generic": ["impersonate=chrome"]},  # 👈 this is the key fix
         }
 
+        os.makedirs("downloads", exist_ok=True)
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
 
-        if os.path.exists(output_path):
-            return send_file(output_path, as_attachment=True)
-
-        return jsonify({"error": "Failed to download file"}), 500
+        return send_file(filename, as_attachment=True)
 
     except Exception as e:
-        print("Error:", str(e))
         return jsonify({"error": str(e)}), 500
 
 
