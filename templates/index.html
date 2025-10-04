@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video Downloader</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d1117;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    input {
+      width: 300px;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    button {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 15px;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #2ea043;
+    }
+    .msg {
+      margin-top: 20px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Video Downloader</h1>
+  <input type="text" id="urlInput" placeholder="Enter video URL..." />
+  <button onclick="downloadVideo()">Download</button>
+  <div class="msg" id="msg"></div>
+
+  <script>
+    async function downloadVideo() {
+      const url = document.getElementById('urlInput').value.trim();
+      const msg = document.getElementById('msg');
+      msg.innerHTML = "Processing... please wait ⏳";
+
+      if (!url) {
+        msg.innerHTML = "❌ Please enter a URL";
+        return;
+      }
+
+      try {
+        const response = await fetch('/download', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({url})
+        });
+
+        if (!response.ok) throw new Error("Download failed");
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = 'video.mp4';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        msg.innerHTML = "✅ Download complete!";
+      } catch (err) {
+        msg.innerHTML = "⚠️ Error: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
