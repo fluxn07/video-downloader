@@ -1,3 +1,5 @@
-flask
+ yt-dlp
+yt-dlp[impersonate]
+Flask
 gunicorn
-yt-dlp[websockets,impersonate]
+requests
