@@ -1,39 +1,64 @@
-from flask import Flask, request, jsonify, send_file
+ from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 import yt_dlp
-import os
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/')
+# ✅ CORS setup (allow all origins — works for Netlify or Render frontends)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # You can later replace "*" with your frontend URL for security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
 def home():
-    return "✅ Video Downloader Backend is Running!"
+    return {"message": "✅ Video Downloader Backend is Running!"}
 
-@app.route('/download', methods=['POST'])
-def download_video():
-    data = request.json
+@app.post("/download")
+async def download_video(request: Request):
+    data = await request.json()
     url = data.get("url")
+
     if not url:
-        return jsonify({"error": "No URL provided"}), 400
+        return {"error": "No URL provided"}
 
     try:
-        # Output file path
+        # ✅ yt-dlp options for faster, metadata-only fetch
         ydl_opts = {
-            "outtmpl": "downloads/%(title)s.%(ext)s",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
             "format": "best",
-            "extractor_args": {"generic": ["impersonate=chrome"]},  # 👈 this is the key fix
+            "noplaylist": True,
+            "extract_flat": False,
+            "outtmpl": "%(title)s.%(ext)s",
+            "ignoreerrors": True,
         }
 
-        os.makedirs("downloads", exist_ok=True)
-
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
+            info = ydl.extract_info(url, download=False)
 
-        return send_file(filename, as_attachment=True)
+            # Some sites might not provide direct 'url' → handle that
+            video_url = None
+            if "url" in info:
+                video_url = info["url"]
+            elif "entries" in info and len(info["entries"]) > 0:
+                video_url = info["entries"][0].get("url")
+
+            if not video_url:
+                return {"error": "Unable to extract video URL. Might require login or cookies."}
+
+            return {
+                "title": info.get("title", "Unknown title"),
+                "thumbnail": info.get("thumbnail", ""),
+                "video_url": video_url,
+                "duration": info.get("duration", 0),
+                "source": info.get("extractor", "unknown"),
+            }
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return {"error": str(e)}
 
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
