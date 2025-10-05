@@ -1,5 +1,5 @@
- yt-dlp
-yt-dlp[impersonate]
-Flask
+fastapi
+uvicorn
+yt-dlp
 gunicorn
 requests
