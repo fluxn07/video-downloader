@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+gunicorn>=22.0.0
+uvicorn>=0.30.0
 yt-dlp
-gunicorn
 requests
