@@ -4,10 +4,10 @@ import yt_dlp
 
 app = FastAPI()
 
-# ✅ CORS setup (allow all origins — works for Netlify or Render frontends)
+# ✅ Allow requests from any frontend (e.g. Render or Netlify)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can later replace "*" with your frontend URL for security
+    allow_origins=["*"],  # Replace "*" with your frontend URL if you want security later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,7 +26,6 @@ async def download_video(request: Request):
         return {"error": "No URL provided"}
 
     try:
-        # ✅ yt-dlp options for faster, metadata-only fetch
         ydl_opts = {
             "quiet": True,
             "no_warnings": True,
@@ -41,11 +40,9 @@ async def download_video(request: Request):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-            # Some sites might not provide direct 'url' → handle that
-            video_url = None
-            if "url" in info:
-                video_url = info["url"]
-            elif "entries" in info and len(info["entries"]) > 0:
+            # Try to extract video URL safely
+            video_url = info.get("url")
+            if not video_url and "entries" in info and len(info["entries"]) > 0:
                 video_url = info["entries"][0].get("url")
 
             if not video_url:
@@ -61,4 +58,3 @@ async def download_video(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
-
